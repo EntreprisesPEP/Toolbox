@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Toolbox PEP</title>
+<meta name="theme-color" content="#14213d">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --bg: #10192e;
+    --bg-panel: #182238;
+    --line: #2c3752;
+    --navy: #14213d;
+    --brand-red: #c41230;
+    --normal: #f0a202;
+    --text-primary: #e7eaf0;
+    --text-dim: #8a93a8;
+    --radius: 4px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    min-height:100vh;
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:Calibri,'Segoe UI',Candara,Optima,Arial,sans-serif;
+  }
+  .top-bar{ height:4px; background:var(--brand-red); }
+
+  /* LOGIN SCREEN */
+  .login-wrap{
+    min-height:calc(100vh - 4px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .login-card{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:32px 28px;
+    width:100%;
+    max-width:360px;
+  }
+  .login-logo{
+    display:block;
+    height:60px;
+    width:auto;
+    margin:0 auto 18px;
+  }
+  .login-card h1{
+    font-size:20px;
+    text-align:center;
+    margin:0 0 4px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+  }
+  .login-card p.sub{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:13px;
+    margin:0 0 24px;
+  }
+  .field-label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:var(--text-dim);
+    display:block;
+    margin-bottom:6px;
+  }
+  .login-card input{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text-primary);
+    padding:10px 12px;
+    border-radius:var(--radius);
+    font-size:14px;
+    margin-bottom:16px;
+    font-family:inherit;
+  }
+  .login-card input:focus{
+    outline:2px solid var(--normal);
+    outline-offset:1px;
+  }
+  .login-btn{
+    width:100%;
+    background:var(--brand-red);
+    color:#fff;
+    border:none;
+    padding:11px;
+    border-radius:var(--radius);
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .login-btn:hover{background:#e0304f;}
+  .login-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .login-error{
+    background:var(--brand-red);
+    color:#fff;
+    font-size:12.5px;
+    padding:9px 12px;
+    border-radius:var(--radius);
+    margin-bottom:16px;
+    display:none;
+  }
+  .login-error.show{display:block;}
+
+  /* HUB */
+  .hub-wrap{ display:none; max-width:960px; margin:0 auto; padding:28px 20px 60px; }
+  .hub-wrap.show{display:block;}
+  header.hub-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--navy);
+    border-radius:var(--radius);
+    padding:18px 22px;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+    gap:14px;
+  }
+  .hub-brand{ display:flex; align-items:center; gap:12px; }
+  .hub-brand img{ height:48px; width:auto; }
+  .hub-brand h1{
+    font-size:20px;
+    margin:0;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:#fff;
+  }
+  .hub-brand p{ margin:0; color:#9aa5c0; font-size:12px; }
+  .hub-user{ display:flex; align-items:center; gap:12px; }
+  .hub-user span{ font-size:12.5px; color:#9aa5c0; }
+  .logout-btn{
+    background:transparent;
+    border:1px solid rgba(255,255,255,0.25);
+    color:#e7eaf0;
+    padding:7px 14px;
+    border-radius:var(--radius);
+    font-size:12px;
+    cursor:pointer;
+  }
+  .logout-btn:hover{border-color:#fff;}
+
+  .tile-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+    gap:16px;
+  }
+  .tile{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px;
+    text-decoration:none;
+    color:var(--text-primary);
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    transition:border-color 0.15s ease, transform 0.1s ease;
+    position:relative;
+  }
+  .tile.available:hover{ border-color:var(--normal); transform:translateY(-2px); }
+  .tile.disabled{ opacity:0.55; cursor:default; }
+  .tile-icon{ font-size:26px; }
+  .tile-name{ font-size:16px; font-weight:600; margin:0; }
+  .tile-desc{ font-size:12.5px; color:var(--text-dim); margin:0; flex:1; }
+  .tile-status{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    font-weight:600;
+    align-self:flex-start;
+    padding:3px 9px;
+    border-radius:10px;
+  }
+  .tile-status.live{ background:#2fa36026; color:#2fa360; }
+  .tile-status.soon{ background:#8a93a826; color:var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <img src="icon-192.png" alt="Logo PEP" class="login-logo">
+    <h1>Toolbox PEP</h1>
+    <p class="sub">Connexion à l'environnement d'outils PEP2000</p>
+    <div class="login-error" id="loginError"></div>
+    <span class="field-label">Courriel</span>
+    <input type="email" id="loginEmail" autocomplete="username">
+    <span class="field-label">Mot de passe</span>
+    <input type="password" id="loginPassword" autocomplete="current-password">
+    <button class="login-btn" id="loginBtn">Se connecter</button>
+  </div>
+</div>
+
+<div class="hub-wrap" id="hubWrap">
+  <header class="hub-header">
+    <div class="hub-brand">
+      <img src="icon-192.png" alt="Logo PEP">
+      <div>
+        <h1>Toolbox PEP</h1>
+        <p>Environnement d'outils Les Entreprises PEP2000</p>
+      </div>
+    </div>
+    <div class="hub-user">
+      <span id="userEmailLabel"></span>
+      <button class="logout-btn" id="logoutBtn">Déconnexion</button>
+    </div>
+  </header>
+
+  <div class="tile-grid" id="tileGrid"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qhiriieengchuzauweto.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFoaXJpaWVlbmdjaHV6YXV3ZXRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NjIzNTEsImV4cCI6MjEwMTQzODM1MX0.-7FspobjqoAARhPIJI2aO0CPcWOwRSqFTWsDj5piCkk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Add or edit entries here as apps go live — just fill "url" and set status to "live".
+const APPS = [
+  {
+    icon: '✅',
+    name: 'Carnet de tâches',
+    desc: 'Liste de tâches professionnelle avec catégories, priorités et suivi de projets.',
+    url: null,
+    status: 'soon'
+  },
+  {
+    icon: '📋',
+    name: 'Ordre du jour',
+    desc: 'Requêtes de main-d\u2019œuvre, machinerie et matériel pour les chantiers.',
+    url: null,
+    status: 'soon'
+  }
+];
+
+function renderTiles(){
+  const grid = document.getElementById('tileGrid');
+  grid.innerHTML = APPS.map(app => {
+    const isLive = app.status === 'live' && app.url;
+    const statusHtml = isLive
+      ? `<span class="tile-status live">Disponible</span>`
+      : `<span class="tile-status soon">Bientôt disponible</span>`;
+    const tag = isLive ? 'a' : 'div';
+    const hrefAttr = isLive ? `href="${app.url}"` : '';
+    return `
+      <${tag} class="tile ${isLive ? 'available' : 'disabled'}" ${hrefAttr}>
+        <div class="tile-icon">${app.icon}</div>
+        <p class="tile-name">${app.name}</p>
+        <p class="tile-desc">${app.desc}</p>
+        ${statusHtml}
+      </${tag}>`;
+  }).join('');
+}
+
+function showLogin(){
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('hubWrap').classList.remove('show');
+}
+function showHub(user){
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('hubWrap').classList.add('show');
+  document.getElementById('userEmailLabel').textContent = user.email;
+  renderTiles();
+}
+
+function showLoginError(msg){
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideLoginError(){
+  document.getElementById('loginError').classList.remove('show');
+}
+
+document.getElementById('loginBtn').addEventListener('click', async ()=>{
+  hideLoginError();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if(!email || !password){
+    showLoginError('Entre ton courriel et ton mot de passe.');
+    return;
+  }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.textContent = 'Connexion...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  btn.disabled = false;
+  btn.textContent = 'Se connecter';
+  if(error){
+    showLoginError('Courriel ou mot de passe incorrect.');
+    return;
+  }
+  showHub(data.user);
+});
+
+document.getElementById('loginPassword').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('loginBtn').click();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+  showLogin();
+});
+
+(async function init(){
+  const { data } = await sb.auth.getSession();
+  if(data.session && data.session.user){
+    showHub(data.session.user);
+  } else {
+    showLogin();
+  }
+})();
+</script>
+</body>
+</html>
