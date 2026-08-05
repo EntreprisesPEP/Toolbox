@@ -381,8 +381,11 @@ function renderTiles(){
   grid.className = 'tile-grid format-' + currentFormat;
   grid.innerHTML = APPS.map(app => {
     const isLive = app.status === 'live' && app.url;
-    const useDayStickerIcon = currentFormat === 'sticker' && currentTheme === 'day' && app.dayStickerIcon;
-    const displayIcon = useDayStickerIcon ? app.dayStickerIcon : app.icon;
+    const useAltIcon = app.dayStickerIcon && (
+      (currentFormat === 'sticker' && currentTheme === 'day') ||
+      (currentFormat === 'list' && currentTheme === 'night')
+    );
+    const displayIcon = useAltIcon ? app.dayStickerIcon : app.icon;
     const isImgIcon = displayIcon.indexOf('<img') !== -1;
     const statusHtml = isLive
       ? `<span class="tile-status live">Disponible</span>`
