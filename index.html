@@ -17,10 +17,19 @@
     --navy: #14213d;
     --brand-red: #c41230;
     --normal: #f0a202;
+    --green: #2fa360;
     --text-primary: #e7eaf0;
     --text-dim: #8a93a8;
     --radius: 4px;
   }
+  html[data-theme="day"]{
+    --bg: #eef1f7;
+    --bg-panel: #ffffff;
+    --line: #dde1ea;
+    --text-primary: #1a2035;
+    --text-dim: #6b7488;
+  }
+  html{transition:background 0.2s ease;}
   *{box-sizing:border-box;}
   html,body{
     margin:0;padding:0;
@@ -186,6 +195,98 @@
   }
   .tile-status.live{ background:#2fa36026; color:#2fa360; }
   .tile-status.soon{ background:#8a93a826; color:var(--text-dim); }
+
+  /* VIEW CONTROLS */
+  .view-controls{
+    display:flex;
+    gap:10px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  .toggle-group{
+    display:flex;
+    border:1px solid var(--line);
+    border-radius:20px;
+    overflow:hidden;
+  }
+  .toggle-btn{
+    background:transparent;
+    border:none;
+    color:var(--text-dim);
+    font-family:inherit;
+    font-size:11.5px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    padding:7px 16px;
+    cursor:pointer;
+  }
+  .toggle-btn.active{
+    background:var(--brand-red);
+    color:#fff;
+  }
+
+  /* LIST FORMAT */
+  .tile-grid.format-list{
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .tile-grid.format-list .tile{
+    flex-direction:row;
+    align-items:center;
+    gap:16px;
+    border:none;
+    border-bottom:1px solid var(--line);
+    border-radius:0;
+    padding:18px 22px;
+  }
+  .tile-grid.format-list .tile:last-child{ border-bottom:none; }
+  .tile-grid.format-list .tile:hover{ transform:none; background:var(--bg); }
+  .tile-grid.format-list .tile-icon-badge{
+    width:38px;height:38px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;color:#fff;flex-shrink:0;
+  }
+  .tile-grid.format-list .tile.available .tile-icon-badge{ background:var(--green); }
+  .tile-grid.format-list .tile.disabled .tile-icon-badge{ background:var(--bg); border:1px dashed var(--line); color:var(--text-dim); }
+  .tile-grid.format-list .tile-body{ flex:1; min-width:0; }
+  .tile-grid.format-list .tile-name{ margin-bottom:2px; }
+  .tile-grid.format-list .tile-desc{ margin:0; }
+  .tile-grid.format-list .tile-status{ flex-shrink:0; align-self:center; }
+
+  /* STICKER FORMAT */
+  .tile-grid.format-sticker{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:24px;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:40px;
+  }
+  .tile-grid.format-sticker .tile{
+    width:170px;
+    border-radius:50%;
+    aspect-ratio:1;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    border:4px solid rgba(128,128,128,0.15);
+    padding:18px;
+    gap:6px;
+  }
+  .tile-grid.format-sticker .tile.available{ background:var(--green); color:#08210f; }
+  .tile-grid.format-sticker .tile.disabled{ background:var(--bg); color:var(--text-dim); opacity:1; }
+  .tile-grid.format-sticker .tile-icon{ font-size:24px; }
+  .tile-grid.format-sticker .tile-name{ font-size:12.5px; }
+  .tile-grid.format-sticker .tile-desc{ display:none; }
+  .tile-grid.format-sticker .tile-status{ font-size:8.5px; padding:2px 8px; background:rgba(0,0,0,0.15); align-self:center; }
+  .tile-grid.format-sticker .tile.available .tile-status{ color:#08210f; }
 </style>
 </head>
 <body>
@@ -211,7 +312,7 @@
       <img src="icon-192.png" alt="Logo PEP">
       <div>
         <h1>Toolbox PEP</h1>
-        <p>Environnement d'outils Les Entreprises PEP2000</p>
+        <p>Environnement boîte à outils Les Entreprises PEP2000</p>
       </div>
     </div>
     <div class="hub-user">
@@ -219,6 +320,17 @@
       <button class="logout-btn" id="logoutBtn">Déconnexion</button>
     </div>
   </header>
+
+  <div class="view-controls">
+    <div class="toggle-group" id="themeToggleGroup">
+      <button type="button" class="toggle-btn" data-theme-btn="night">Nuit</button>
+      <button type="button" class="toggle-btn" data-theme-btn="day">Jour</button>
+    </div>
+    <div class="toggle-group" id="formatToggleGroup">
+      <button type="button" class="toggle-btn" data-format-btn="list">Liste</button>
+      <button type="button" class="toggle-btn" data-format-btn="sticker">Pastilles</button>
+    </div>
+  </div>
 
   <div class="tile-grid" id="tileGrid"></div>
 </div>
@@ -246,15 +358,30 @@ const APPS = [
   }
 ];
 
+let currentFormat = localStorage.getItem('toolbox-format') === 'sticker' ? 'sticker' : 'list';
+let currentTheme = localStorage.getItem('toolbox-theme') === 'day' ? 'day' : 'night';
+
 function renderTiles(){
   const grid = document.getElementById('tileGrid');
+  grid.className = 'tile-grid format-' + currentFormat;
   grid.innerHTML = APPS.map(app => {
     const isLive = app.status === 'live' && app.url;
     const statusHtml = isLive
       ? `<span class="tile-status live">Disponible</span>`
-      : `<span class="tile-status soon">Bientôt disponible</span>`;
+      : `<span class="tile-status soon">Bientôt</span>`;
     const tag = isLive ? 'a' : 'div';
     const hrefAttr = isLive ? `href="${app.url}"` : '';
+    if(currentFormat === 'list'){
+      return `
+        <${tag} class="tile ${isLive ? 'available' : 'disabled'}" ${hrefAttr}>
+          <div class="tile-icon-badge">${app.icon}</div>
+          <div class="tile-body">
+            <p class="tile-name">${app.name}</p>
+            <p class="tile-desc">${app.desc}</p>
+          </div>
+          ${statusHtml}
+        </${tag}>`;
+    }
     return `
       <${tag} class="tile ${isLive ? 'available' : 'disabled'}" ${hrefAttr}>
         <div class="tile-icon">${app.icon}</div>
@@ -264,6 +391,35 @@ function renderTiles(){
       </${tag}>`;
   }).join('');
 }
+
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  document.querySelectorAll('[data-theme-btn]').forEach(btn=>{
+    btn.classList.toggle('active', btn.getAttribute('data-theme-btn') === currentTheme);
+  });
+}
+function applyFormat(){
+  document.querySelectorAll('[data-format-btn]').forEach(btn=>{
+    btn.classList.toggle('active', btn.getAttribute('data-format-btn') === currentFormat);
+  });
+}
+document.querySelectorAll('[data-theme-btn]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    currentTheme = btn.getAttribute('data-theme-btn');
+    localStorage.setItem('toolbox-theme', currentTheme);
+    applyTheme();
+  });
+});
+document.querySelectorAll('[data-format-btn]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    currentFormat = btn.getAttribute('data-format-btn');
+    localStorage.setItem('toolbox-format', currentFormat);
+    applyFormat();
+    renderTiles();
+  });
+});
+applyTheme();
+applyFormat();
 
 function showLogin(){
   document.getElementById('loginWrap').style.display = 'flex';
