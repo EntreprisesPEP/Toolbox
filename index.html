@@ -326,6 +326,74 @@
   .tile-grid.format-sticker .tile-desc{ display:none; }
   .tile-grid.format-sticker .tile-status{ font-size:8.5px; padding:2px 8px; background:rgba(128,128,128,0.2); align-self:center; }
   .tile-grid.format-sticker .tile.available .tile-status{ background:#2fa36026; color:var(--green); }
+
+  /* CONE ICON (placeholder apps) */
+  .cone-icon{ width:32px; height:32px; display:block; }
+  .tile-grid.format-list .tile-icon-badge .cone-icon{ width:22px; height:22px; }
+  .tile-grid.format-sticker .tile-icon .cone-icon{ width:44px; height:44px; }
+
+  /* NOTE BADGE on placeholder tiles */
+  .note-dot{
+    position:absolute;
+    top:8px; right:8px;
+    width:9px; height:9px;
+    border-radius:50%;
+    background:var(--normal);
+    box-shadow:0 0 0 2px var(--bg-panel);
+  }
+  .tile-grid.format-sticker .note-dot{ top:10px; right:14px; }
+  .tile.disabled{ cursor:pointer; }
+
+  /* NOTE MODAL */
+  .note-modal-overlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.55);
+    align-items:center; justify-content:center;
+    z-index:200;
+    padding:20px;
+  }
+  .note-modal-overlay.show{ display:flex; }
+  .note-modal{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px;
+    width:100%;
+    max-width:420px;
+  }
+  .note-modal h3{ margin:0 0 4px; font-size:16px; color:var(--text-primary); }
+  .note-modal p.hint{ margin:0 0 14px; font-size:12px; color:var(--text-dim); }
+  .note-modal textarea{
+    width:100%;
+    min-height:120px;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--text-primary);
+    border-radius:var(--radius);
+    padding:10px 12px;
+    font-family:inherit;
+    font-size:13.5px;
+    resize:vertical;
+  }
+  .note-modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:14px;
+  }
+  .note-btn{
+    border:none;
+    border-radius:var(--radius);
+    padding:8px 16px;
+    font-size:12.5px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .note-btn.save{ background:var(--brand-red); color:#fff; }
+  .note-btn.save:hover{ background:#e0304f; }
+  .note-btn.close{ background:transparent; border:1px solid var(--line); color:var(--text-primary); }
+  .note-btn.close:hover{ border-color:var(--text-dim); }
 </style>
 </head>
 <body>
@@ -382,10 +450,43 @@
   <div class="tile-grid" id="tileGrid"></div>
 </div>
 
+<div class="note-modal-overlay" id="noteModalOverlay">
+  <div class="note-modal">
+    <h3 id="noteModalTitle">Note</h3>
+    <p class="hint">Idée / description pour cette future app — visible seulement par toi, sur cet appareil.</p>
+    <textarea id="noteModalTextarea" placeholder="Écris ton idée ici..."></textarea>
+    <div class="note-modal-actions">
+      <button type="button" class="note-btn close" id="noteModalClose">Fermer</button>
+      <button type="button" class="note-btn save" id="noteModalSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://qhiriieengchuzauweto.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFoaXJpaWVlbmdjaHV6YXV3ZXRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NjIzNTEsImV4cCI6MjEwMTQzODM1MX0.-7FspobjqoAARhPIJI2aO0CPcWOwRSqFTWsDj5piCkk';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Generic traffic-cone icon used for future/placeholder apps not built yet.
+const CONE_ICON = `<svg class="cone-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="52" width="52" height="7" rx="2" fill="#14213D"/>
+  <path d="M32 8 L46 46 H18 Z" fill="#C41230"/>
+  <path d="M25.5 28 H38.5 L41.2 35 H22.8 Z" fill="#ffffff"/>
+  <path d="M20.3 42 H43.7 L45.8 48 H18.2 Z" fill="#ffffff"/>
+  <rect x="14" y="46" width="36" height="6" rx="1.5" fill="#14213D"/>
+</svg>`;
+
+// Placeholder tiles for apps not built yet — click one to jot an idea/description.
+// Notes are stored locally (per browser) and are only visible to you.
+const PLACEHOLDER_APPS = Array.from({ length: 14 }, (_, i) => ({
+  id: 'placeholder-' + (i + 1),
+  icon: CONE_ICON,
+  name: 'Application future ' + (i + 1),
+  desc: 'Pas encore construite — clique pour noter une idée.',
+  url: null,
+  status: 'soon',
+  isPlaceholder: true
+}));
 
 // Add or edit entries here as apps go live — just fill "url" and set status to "live".
 const APPS = [
@@ -418,8 +519,24 @@ const APPS = [
     desc: 'Suivi de rentabilité et des coûts par projet, mois par mois.',
     url: 'https://couts-des-projets.vercel.app/',
     status: 'live'
-  }
+  },
+  ...PLACEHOLDER_APPS
 ];
+
+function noteStorageKey(app, index){
+  return 'toolbox-note-' + (app.id || app.name || ('idx' + index));
+}
+function getNote(app, index){
+  try { return localStorage.getItem(noteStorageKey(app, index)) || ''; }
+  catch(e){ return ''; }
+}
+function setNote(app, index, text){
+  try {
+    const key = noteStorageKey(app, index);
+    if(text && text.trim()){ localStorage.setItem(key, text); }
+    else { localStorage.removeItem(key); }
+  } catch(e){}
+}
 
 let currentFormat = localStorage.getItem('toolbox-format') === 'sticker' ? 'sticker' : 'list';
 let currentTheme = localStorage.getItem('toolbox-theme') === 'day' ? 'day' : 'night';
@@ -427,7 +544,7 @@ let currentTheme = localStorage.getItem('toolbox-theme') === 'day' ? 'day' : 'ni
 function renderTiles(){
   const grid = document.getElementById('tileGrid');
   grid.className = 'tile-grid format-' + currentFormat;
-  grid.innerHTML = APPS.map(app => {
+  grid.innerHTML = APPS.map((app, index) => {
     const isLive = app.status === 'live' && app.url;
     const useAltIcon = app.dayStickerIcon && (
       (currentFormat === 'sticker' && currentTheme === 'day') ||
@@ -442,27 +559,61 @@ function renderTiles(){
       : `<span class="tile-status soon">Bientôt</span>`;
     const tag = isLive ? 'a' : 'div';
     const hrefAttr = isLive ? `href="${app.url}"` : '';
+    const noteAttr = (!isLive && app.isPlaceholder) ? `data-note-index="${index}"` : '';
+    const hasNote = (!isLive && app.isPlaceholder) ? !!getNote(app, index) : false;
+    const noteDotHtml = hasNote ? '<span class="note-dot"></span>' : '';
     const tileClass = (isLive ? 'available' : 'disabled') + (isImgIcon ? ' has-img-icon' : '');
     if(currentFormat === 'list'){
       return `
-        <${tag} class="tile ${tileClass}" ${hrefAttr}>
+        <${tag} class="tile ${tileClass}" ${hrefAttr} ${noteAttr}>
           <div class="tile-icon-badge${isImgIcon ? ' has-image' : ''}">${displayIcon}</div>
           <div class="tile-body">
             <p class="tile-name">${app.name}</p>
             <p class="tile-desc">${app.desc}</p>
           </div>
           ${statusHtml}
+          ${noteDotHtml}
         </${tag}>`;
     }
     return `
-      <${tag} class="tile ${tileClass}" ${hrefAttr}>
+      <${tag} class="tile ${tileClass}" ${hrefAttr} ${noteAttr}>
         <div class="tile-icon">${displayIcon}</div>
         <p class="tile-name">${app.name}</p>
         <p class="tile-desc">${app.desc}</p>
         ${statusHtml}
+        ${noteDotHtml}
       </${tag}>`;
   }).join('');
+
+  grid.querySelectorAll('[data-note-index]').forEach(el => {
+    el.addEventListener('click', () => openNoteModal(parseInt(el.getAttribute('data-note-index'), 10)));
+  });
 }
+
+let activeNoteIndex = null;
+function openNoteModal(index){
+  activeNoteIndex = index;
+  const app = APPS[index];
+  document.getElementById('noteModalTitle').textContent = app.name;
+  document.getElementById('noteModalTextarea').value = getNote(app, index);
+  document.getElementById('noteModalOverlay').classList.add('show');
+  document.getElementById('noteModalTextarea').focus();
+}
+function closeNoteModal(){
+  document.getElementById('noteModalOverlay').classList.remove('show');
+  activeNoteIndex = null;
+}
+document.getElementById('noteModalClose').addEventListener('click', closeNoteModal);
+document.getElementById('noteModalOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'noteModalOverlay') closeNoteModal();
+});
+document.getElementById('noteModalSave').addEventListener('click', () => {
+  if(activeNoteIndex === null) return;
+  const app = APPS[activeNoteIndex];
+  setNote(app, activeNoteIndex, document.getElementById('noteModalTextarea').value);
+  closeNoteModal();
+  renderTiles();
+});
 
 function applyTheme(){
   document.documentElement.setAttribute('data-theme', currentTheme);
